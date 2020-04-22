@@ -2,42 +2,46 @@ require "grip"
 
 Grip.config do |cfg|
   cfg.env = "production"
-  cfg.logging = false
 end
 
-class Index < Grip::HttpConsumer
-    route "/", ["GET"]
-
-    def get(env)
-        headers(env, "Content-Type", "text/html")
-        {:ok, nil}
-    end
+class Index < Grip::Controller::Http
+  def get(context)
+    context.response.content_type = "text/html"
+    context.response.print(nil)
+    context.response
+  end
 end
 
-class Users < Grip::HttpConsumer
-    route "/user/:id", ["GET"]
-
-    def get(env)
-        headers(env, "Content-Type", "text/html")
-        {:ok, url?(env)["id"]}
-    end
+class Users < Grip::Controller::Http
+  def get(context)
+    params = url(context)
+    context.response.content_type = "text/html"
+    context.response.print(params["id"])
+    context.response
+  end
 end
 
-class User < Grip::HttpConsumer
-    route "/user", ["POST"]
-
-    def post(env)
-        headers(env, "Content-Type", "text/html")
-        {:ok, nil}
-    end
+class User < Grip::Controller::Http
+  def post(context)
+    context.response.content_type = "text/html"
+    context.response.print(nil)
+    context.response
+  end
 end
 
-Grip.config.add_router Grip::HttpRouteHandler::INSTANCE
-add_handlers [Index, Users, User]
+class App < Grip::Application
+  def initialize
+    get "/", Index
+    get "/user/:id", Users
+    post "/user", User
+  end
+end
 
-System.cpu_count.times do |i|
+app = App.new
+
+System.cpu_count.times do |_|
   Process.fork do
-    Grip.run do |config|
+    app.run do |config|
       server = config.server.not_nil!
       server.bind_tcp "0.0.0.0", 3000, reuse_port: true
     end
